@@ -5,15 +5,15 @@ const BABY_NAME = "로안";
 const BABY_BIRTHDATE = new Date("2026-03-11T16:12:00");
 
 const GDRIVE_CONFIG = {
-  apiKey: "AIzaSyC8IyGlB6IDQUs-OOQ8_PWBaDVd3kaneBg",
-  clientId: "883112531411-4s7a6s3c19i4qghmt58e32hq1cm3mg07.apps.googleusercontent.com",
-  folderId: "1wDwZzUM83CY6V8KOA64_ISPTNcHKOtVs",
+  apiKey: "YOUR_API_KEY",
+  clientId: "YOUR_CLIENT_ID",
+  folderId: "YOUR_FOLDER_ID",
   scope: "https://www.googleapis.com/auth/drive.file",
 };
 
 // 보안 질문 (답변은 소문자 비교)
-const SECURITY_Q = "로안이 태어난 도시는?(한글,ㅔ)";
-const SECURITY_A = "벤쿠버"; // ← 원하는 답변으로 변경
+const SECURITY_Q = "로안이 태어난 병원 이름은?";
+const SECURITY_A = "세브란스"; // ← 원하는 답변으로 변경
 
 const PW_STORAGE_KEY = "rowan_admin_pw";
 const LIKES_STORAGE_KEY = "rowan_likes";
@@ -114,6 +114,7 @@ export default function BabyGallery() {
   const [uploadDate, setUploadDate] = useState(new Date().toISOString().split("T")[0]);
   const [lightbox, setLightbox] = useState(null);
   const [gdriveReady, setGdriveReady] = useState(false);
+  const [gSignedIn, setGSignedIn] = useState(false);
   const [tick, setTick] = useState(0);
   const fileRef = useRef();
 
@@ -135,7 +136,13 @@ export default function BabyGallery() {
             discoveryDocs: ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"],
           });
           setGdriveReady(true);
-          loadDriveFiles();
+          const authInstance = window.gapi.auth2.getAuthInstance();
+          setGSignedIn(authInstance.isSignedIn.get());
+          authInstance.isSignedIn.listen((signed) => {
+            setGSignedIn(signed);
+            if (signed) loadDriveFiles();
+          });
+          if (authInstance.isSignedIn.get()) loadDriveFiles();
         } catch (e) { console.warn("Drive API 초기화 실패 (데모 모드):", e); }
       });
     };
@@ -309,6 +316,14 @@ export default function BabyGallery() {
       {isAdmin && (
         <div style={S.uploadBar}>
           <span style={S.uploadBarText}>📁 여러 파일 동시 선택 가능</span>
+          {gdriveReady && !gSignedIn && (
+            <button style={S.btnGoogleLogin} onClick={() => window.gapi.auth2.getAuthInstance().signIn()}>
+              🔗 Google Drive 연결
+            </button>
+          )}
+          {gdriveReady && gSignedIn && (
+            <span style={S.gConnected}>✅ Drive 연결됨</span>
+          )}
           <div style={S.datePickerWrap}>
             <label style={S.dateLabel}>📅 촬영일</label>
             <input type="date" style={S.datePicker} value={uploadDate}
@@ -589,6 +604,8 @@ const S = {
   dateLabel: { fontSize: 13, color: "#a07060" },
   datePicker: { padding: "6px 10px", borderRadius: 10, border: "1.5px solid #f0d0c0", fontSize: 13, fontFamily: "inherit", outline: "none", background: "#fff", color: "#3a2010" },
   btnUpload: { padding: "8px 20px", borderRadius: 20, border: "none", background: "#e8906a", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" },
+  btnGoogleLogin: { padding: "7px 16px", borderRadius: 20, border: "1.5px solid #4285f4", background: "transparent", color: "#4285f4", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" },
+  gConnected: { fontSize: 12, color: "#2e7d32" },
 
   progressWrap: { maxWidth: 1100, margin: "12px auto 0", padding: "0 24px", display: "flex", flexDirection: "column", gap: 6 },
   progressItem: { display: "flex", alignItems: "center", gap: 10, background: "#fff", borderRadius: 8, padding: "8px 12px", border: "1px solid #f0d0c0" },
